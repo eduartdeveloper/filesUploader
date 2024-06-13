@@ -83,6 +83,7 @@ export default {
             this.isDragging = false;
         },
         async generateDownloadLinks(files) {
+            // Obtener las url firmadas de descarga
             const downloadLinks = [];
             for (const file of files) {
                 try {
@@ -92,16 +93,16 @@ export default {
                     downloadLinks.push({ ruta, name });
                 } catch (error) {
                     console.error(
-                        'Error generating download link for:',
+                        'Error generando el link de descarga:',
                         file,
                         error
                     );
                 }
             }
-            console.log(downloadLinks);
             return downloadLinks;
         },
         handleSubmit() {
+            // formulario subir archivo
             if (!this.fileName) {
                 Swal.fire({
                     icon: 'warning',
@@ -119,10 +120,9 @@ export default {
                 return;
             }
 
-            // todo: enviar archivoski
             this.closeModal();
             this.isLoading = true;
-            // storage
+            // subir archivo a storage
             try {
                 const storageRef = ref(storage, `uploads/${this.file.name}`);
                 const uploadTask = uploadBytesResumable(storageRef, this.file);
@@ -130,8 +130,7 @@ export default {
                 uploadTask.on(
                     'state_changed',
                     snapshot => {
-                        // Observe state change events such as progress, pause, and resume
-                        // Get task progress, including the number of bytes uploaded and the total number of bytes to be uploaded
+                        // progreso de carga
                         const progress =
                             (snapshot.bytesTransferred / snapshot.totalBytes) *
                             100;
@@ -147,7 +146,7 @@ export default {
                     },
                     error => {
                         // error subiendo
-                        console.error('Error uploading file:', error);
+                        console.error('Error subiendo archivo:', error);
                         Swal.fire({
                             icon: 'warning',
                             title: 'Error',
@@ -156,14 +155,12 @@ export default {
                         this.isLoading = false;
                     },
                     async () => {
-                        // subió
+                        // subió correctamente
                         const downloadURL = await getDownloadURL(
                             uploadTask.snapshot.ref
                         );
-                        console.log('url', downloadURL);
-
-                        // functions
-                        // Llamar a la función unzipFile
+                        // 
+                        // Llamar a la función unzipFile para descomprimir el archivo
                         const response = await fetch(
                             'https://us-central1-archivos-c36e0.cloudfunctions.net/unzipFile',
                             {
@@ -180,16 +177,12 @@ export default {
 
                         if (response.ok) {
                             const result = await response.json();
-                            console.log(
-                                'Rutas de archivos descomprimidos:',
-                                result
-                            );
                             const linksHijos = await this.generateDownloadLinks(
                                 result.files
                             );
                             this.downloadLinks = linksHijos;
 
-                            // guardar en bd
+                            // guardar en bd firestore
                             await this.saveFileData(downloadURL, linksHijos);
 
                             Swal.fire({
